@@ -11,6 +11,7 @@ contract StakingPool is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
+    error ZeroAmount();
     error NotImplemented();
 
     IERC20 public immutable stakingToken;
@@ -33,6 +34,7 @@ contract StakingPool is ReentrancyGuard {
     struct UserInfo {
         uint256 amount;
         uint256 rewardDebt;
+        uint256 pendingRewards;
     }
 
     mapping(address => UserInfo) public userInfo;
@@ -53,10 +55,29 @@ contract StakingPool is ReentrancyGuard {
     }
 
     /// @notice Stake `amount` of staking token into the pool.
-    /// @dev TODO(v1): implement reward settlement, amount accounting, token transfer, and rewardDebt update.
+    /// @dev Does not auto-claim rewards. Newly accrued rewards are cached into `pendingRewards`.
     function stake(uint256 amount) external nonReentrant {
-        amount; // silence warning until implementation.
-        revert NotImplemented();
+        if (amount == 0) revert ZeroAmount();
+
+        _updatePool();
+
+        UserInfo storage user = userInfo[msg.sender];
+
+        if (user.amount > 0) {
+            uint256 accumulated = (user.amount * accRewardPerShare) / PRECISION;
+            uint256 newlyAccrued = accumulated - user.rewardDebt;
+            if (newlyAccrued > 0) {
+                user.pendingRewards += newlyAccrued;
+            }
+        }
+
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        user.amount += amount;
+        totalStaked += amount;
+        user.rewardDebt = (user.amount * accRewardPerShare) / PRECISION;
+
+        emit Staked(msg.sender, amount);
     }
 
     /// @notice Unstake `amount` of staking token from the pool.
@@ -73,25 +94,47 @@ contract StakingPool is ReentrancyGuard {
     }
 
     /// @notice View pending reward for `user` at current timestamp.
-    /// @dev TODO(v1): implement full simulation with up-to-date accRewardPerShare.
     function pendingReward(address user) external view returns (uint256) {
-        user; // silence warning until implementation.
-        return 0;
+        UserInfo memory info = userInfo[user];
+        uint256 currentAccRewardPerShare = accRewardPerShare;
+
+        if (block.timestamp > lastRewardTimestamp && totalStaked != 0) {
+            uint256 elapsed = block.timestamp - lastRewardTimestamp;
+            uint256 reward = elapsed * rewardRate;
+            currentAccRewardPerShare += (reward * PRECISION) / totalStaked;
+        }
+
+        uint256 accumulated = (info.amount * currentAccRewardPerShare) / PRECISION;
+        uint256 newlyAccrued = accumulated - info.rewardDebt;
+
+        return info.pendingRewards + newlyAccrued;
     }
 
     /// @notice Returns raw user accounting fields.
     function getUserInfo(address user)
         external
         view
-        returns (uint256 amount, uint256 rewardDebt)
+        returns (uint256 amount, uint256 rewardDebt, uint256 pendingRewards)
     {
         UserInfo memory info = userInfo[user];
-        return (info.amount, info.rewardDebt);
+        return (info.amount, info.rewardDebt, info.pendingRewards);
     }
 
-    /// @dev TODO(v1): update `accRewardPerShare` and `lastRewardTimestamp`.
+    /// @dev Updates global reward accounting up to current timestamp.
     function _updatePool() internal {
-        revert NotImplemented();
+        if (block.timestamp <= lastRewardTimestamp) {
+            return;
+        }
+
+        if (totalStaked == 0) {
+            lastRewardTimestamp = block.timestamp;
+            return;
+        }
+
+        uint256 elapsed = block.timestamp - lastRewardTimestamp;
+        uint256 reward = elapsed * rewardRate;
+        accRewardPerShare += (reward * PRECISION) / totalStaked;
+        lastRewardTimestamp = block.timestamp;
     }
 
     /// @dev TODO(v1): safely transfer reward token to `to` with balance checks.
