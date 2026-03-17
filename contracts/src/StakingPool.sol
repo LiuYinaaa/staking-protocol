@@ -12,6 +12,7 @@ contract StakingPool is ReentrancyGuard {
 
     error ZeroAddress();
     error ZeroAmount();
+    error InsufficientStake();
     error NotImplemented();
 
     IERC20 public immutable stakingToken;
@@ -83,14 +84,53 @@ contract StakingPool is ReentrancyGuard {
     /// @notice Unstake `amount` of staking token from the pool.
     /// @dev TODO(v1): implement reward settlement, amount checks, token transfer, and rewardDebt update.
     function unstake(uint256 amount) external nonReentrant {
-        amount; // silence warning until implementation.
-        revert NotImplemented();
+        if (amount == 0) revert ZeroAmount();
+
+        _updatePool();
+
+        UserInfo storage user = userInfo[msg.sender];
+
+        if (user.amount < amount) {
+            revert InsufficientStake();
+        }
+
+        uint256 accumulated = (user.amount * accRewardPerShare) / PRECISION;
+        uint256 newlyAccrued = accumulated - user.rewardDebt;
+        if (newlyAccrued > 0) {
+            user.pendingRewards += newlyAccrued;
+        }
+
+        user.amount -= amount;
+        totalStaked -= amount;
+
+        stakingToken.safeTransfer(msg.sender, amount);
+
+        user.rewardDebt = (user.amount * accRewardPerShare) / PRECISION;
+
+        emit Unstaked(msg.sender, amount);
     }
 
     /// @notice Claim accumulated rewards for caller.
     /// @dev TODO(v1): implement pending reward calculation, reward transfer, and debt refresh.
     function claimReward() external nonReentrant {
-        revert NotImplemented();
+        _updatePool();
+
+        UserInfo storage user = userInfo[msg.sender];
+
+        uint256 accumulated = (user.amount * accRewardPerShare) / PRECISION;
+        uint256 newlyAccrued = accumulated - user.rewardDebt;
+        if (newlyAccrued > 0) {
+            user.pendingRewards += newlyAccrued;
+        }
+
+        uint256 claimable = user.pendingRewards;
+        if (claimable == 0) revert ZeroAmount();
+
+        _safeRewardTransfer(msg.sender, claimable);
+        user.pendingRewards = 0;
+        user.rewardDebt = (user.amount * accRewardPerShare) / PRECISION;
+
+        emit RewardClaimed(msg.sender, claimable);
     }
 
     /// @notice View pending reward for `user` at current timestamp.
@@ -139,8 +179,10 @@ contract StakingPool is ReentrancyGuard {
 
     /// @dev TODO(v1): safely transfer reward token to `to` with balance checks.
     function _safeRewardTransfer(address to, uint256 amount) internal {
-        to;
-        amount;
-        revert NotImplemented();
+        uint256 balance = rewardToken.balanceOf(address(this));
+        uint256 transferAmount = amount > balance ? balance : amount;
+        if (transferAmount > 0) {
+            rewardToken.safeTransfer(to, transferAmount);
+        }
     }
 }
