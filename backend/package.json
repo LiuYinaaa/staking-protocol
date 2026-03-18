@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/main.ts",
+    "indexer:scan": "tsx src/scripts/indexStakingEvents.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
