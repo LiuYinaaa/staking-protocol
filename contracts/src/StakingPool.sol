@@ -13,6 +13,7 @@ contract StakingPool is ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error InsufficientStake();
+    error InsufficientRewardBalance();
     error NotImplemented();
 
     IERC20 public immutable stakingToken;
@@ -177,12 +178,10 @@ contract StakingPool is ReentrancyGuard {
         lastRewardTimestamp = block.timestamp;
     }
 
-    /// @dev TODO(v1): safely transfer reward token to `to` with balance checks.
+    /// @dev Transfer reward token to `to`. Reverts if pool reward balance is insufficient.
     function _safeRewardTransfer(address to, uint256 amount) internal {
         uint256 balance = rewardToken.balanceOf(address(this));
-        uint256 transferAmount = amount > balance ? balance : amount;
-        if (transferAmount > 0) {
-            rewardToken.safeTransfer(to, transferAmount);
-        }
+        if (balance < amount) revert InsufficientRewardBalance();
+        rewardToken.safeTransfer(to, amount);
     }
 }

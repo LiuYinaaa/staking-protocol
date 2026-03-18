@@ -10,6 +10,7 @@ contract StakingPoolTest is Test {
     uint256 internal constant INITIAL_SUPPLY = 1_000_000e18;
     uint256 internal constant ALICE_STAKE_1 = 100e18;
     uint256 internal constant ALICE_STAKE_2 = 50e18;
+    uint256 internal constant ALICE_UNSTAKE = 40e18;
     uint256 internal constant BOB_STAKE = 100e18;
     uint256 internal constant REWARD_RATE = 1e18; // 1 token / second
 
@@ -118,6 +119,22 @@ contract StakingPoolTest is Test {
         pool.unstake(ALICE_STAKE_1 + 1);
     }
 
+    function test_Unstake_DoesNotLoseAccumulatedPendingRewards() external {
+        vm.prank(alice);
+        pool.stake(ALICE_STAKE_1);
+
+        vm.warp(block.timestamp + 10);
+        uint256 pendingBeforeUnstake = pool.pendingReward(alice);
+        assertEq(pendingBeforeUnstake, 10e18);
+
+        vm.prank(alice);
+        pool.unstake(ALICE_UNSTAKE);
+
+        (uint256 amount,, uint256 cachedPending) = pool.userInfo(alice);
+        assertEq(amount, ALICE_STAKE_1 - ALICE_UNSTAKE);
+        assertEq(cachedPending, pendingBeforeUnstake);
+    }
+
     function test_ClaimReward_Succeeds() external {
         vm.prank(alice);
         pool.stake(ALICE_STAKE_1);
@@ -156,6 +173,48 @@ contract StakingPoolTest is Test {
         vm.prank(alice);
         vm.expectRevert(StakingPool.ZeroAmount.selector);
         pool.claimReward();
+    }
+
+    function test_ClaimReward_DoesNotChangeUserStakedAmount() external {
+        vm.prank(alice);
+        pool.stake(ALICE_STAKE_1);
+
+        vm.warp(block.timestamp + 10);
+
+        vm.prank(alice);
+        pool.claimReward();
+
+        (uint256 amount,,) = pool.userInfo(alice);
+        assertEq(amount, ALICE_STAKE_1);
+        assertEq(pool.totalStaked(), ALICE_STAKE_1);
+    }
+
+    function test_Flow_StakeUnstakeClaim_NoRewardLossOrDoubleCount() external {
+        vm.prank(alice);
+        pool.stake(ALICE_STAKE_1);
+
+        vm.warp(block.timestamp + 10);
+
+        vm.prank(alice);
+        pool.unstake(ALICE_UNSTAKE);
+
+        vm.warp(block.timestamp + 10);
+
+        uint256 rewardBefore = rewardToken.balanceOf(alice);
+        uint256 pendingBeforeClaim = pool.pendingReward(alice);
+
+        // First 10s with 100 staked => 10 reward.
+        // Next 10s with 60 staked out of total 60 (single user) => 10 reward.
+        assertApproxEqAbs(pendingBeforeClaim, 20e18, 1e8);
+
+        vm.prank(alice);
+        pool.claimReward();
+
+        uint256 rewardAfter = rewardToken.balanceOf(alice);
+        assertEq(rewardAfter - rewardBefore, pendingBeforeClaim);
+
+        uint256 pendingAfterClaim = pool.pendingReward(alice);
+        assertEq(pendingAfterClaim, 0);
     }
 
     function test_Unstake_DoesNotAccrueForWithdrawnAmount() external {
