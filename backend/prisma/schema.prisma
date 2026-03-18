@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model StakingEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  userAddress String   @db.VarChar(42)
+  amount      Decimal  @db.Decimal(78, 0)
+  txHash      String   @db.VarChar(66)
+  blockNumber BigInt
+  logIndex    Int
+  timestamp   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([userAddress, blockNumber])
+  @@index([eventType, blockNumber])
+}
+
+model StakingPosition {
+  id                 String   @id @default(cuid())
+  userAddress        String   @unique @db.VarChar(42)
+  stakedAmount       Decimal  @default(0) @db.Decimal(78, 0)
+  totalClaimedReward Decimal  @default(0) @db.Decimal(78, 0)
+  lastUpdatedBlock   BigInt   @default(0)
+  lastUpdatedAt      DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+
+model ProtocolStats {
+  id                 Int      @id @default(1)
+  totalStaked        Decimal  @default(0) @db.Decimal(78, 0)
+  totalUsers         Int      @default(0)
+  totalRewardsClaimed Decimal @default(0) @db.Decimal(78, 0)
+  lastUpdatedBlock   BigInt   @default(0)
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+
+model SyncState {
+  id              String   @id @default(cuid())
+  contractAddress String   @unique @db.VarChar(42)
+  lastSyncedBlock BigInt   @default(0)
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+}

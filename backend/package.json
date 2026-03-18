@@ -1,0 +1,31 @@
+{
+  "name": "staking-protocol-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend indexer and API service for staking-protocol",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.0.0",
+    "viem": "^2.22.21"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prisma": "^6.5.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.7.2"
+  }
+}
