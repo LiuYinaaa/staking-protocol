@@ -18,7 +18,7 @@ contract DemoFlow is Script {
 
     function run() external {
         uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0));
-        uint256 userKey = vm.envOr("USER_PRIVATE_KEY", deployerKey);
+        uint256 userKey = vm.envOr("USER_PRIVATE_KEY", uint256(0));
         uint256 warpSeconds = vm.envOr("WARP_SECONDS", DEFAULT_WARP_SECONDS);
 
         address stakingTokenAddr = vm.envOr("STAKING_TOKEN", address(0));
@@ -48,15 +48,18 @@ contract DemoFlow is Script {
             pool = StakingPool(poolAddr);
         }
 
-        address user = userKey == 0 ? vm.addr(0xA11CE) : vm.addr(userKey);
-
-        if (deployerKey == 0) {
-            vm.startBroadcast();
-        } else {
-            vm.startBroadcast(deployerKey);
+        // If USER_PRIVATE_KEY is provided, stake with that account.
+        // Otherwise, stake with the current broadcaster account.
+        if (userKey != 0) {
+            address userFromKey = vm.addr(userKey);
+            if (deployerKey == 0) {
+                vm.startBroadcast();
+            } else {
+                vm.startBroadcast(deployerKey);
+            }
+            stakingToken.transfer(userFromKey, USER_FUND);
+            vm.stopBroadcast();
         }
-        stakingToken.transfer(user, USER_FUND);
-        vm.stopBroadcast();
 
         if (userKey == 0) {
             vm.startBroadcast();
@@ -64,22 +67,30 @@ contract DemoFlow is Script {
             vm.startBroadcast(userKey);
         }
 
+        // tx.origin under broadcast is the actual externally owned account sending txs.
+        address user = tx.origin;
         uint256 balanceBefore = stakingToken.balanceOf(user);
         stakingToken.approve(address(pool), type(uint256).max);
         pool.stake(STAKE_AMOUNT);
+        vm.stopBroadcast();
 
         if (warpSeconds > 0) {
-            vm.rpc(
-                "evm_increaseTime",
-                string.concat("[", vm.toString(warpSeconds), "]")
-            );
-            vm.rpc("evm_mine", "[]");
+            // Broadcast-safe wait: let wall-clock time pass so next mined tx has later timestamp.
+            vm.sleep(warpSeconds * 1000);
+        }
+
+        if (userKey == 0) {
+            vm.startBroadcast();
+        } else {
+            vm.startBroadcast(userKey);
         }
 
         uint256 pendingBeforeClaim = pool.pendingReward(user);
         uint256 rewardBefore = rewardToken.balanceOf(user);
 
-        pool.claimReward();
+        if (pendingBeforeClaim > 0) {
+            pool.claimReward();
+        }
 
         uint256 rewardAfter = rewardToken.balanceOf(user);
         pool.unstake(STAKE_AMOUNT);
