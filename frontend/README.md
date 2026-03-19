@@ -32,6 +32,8 @@ Set `.env` values:
 - `VITE_CHAIN_RPC_URL`
 - `VITE_STAKING_POOL_ADDRESS`
 - `VITE_STAKING_TOKEN_ADDRESS`
+- `VITE_REWARD_TOKEN_ADDRESS`
+- `VITE_FAUCET_ADDRESS`
 - `VITE_TOKEN_DECIMALS`
 
 Install and run:
@@ -59,6 +61,13 @@ Contract config lives in:
 - `src/contracts/addresses.ts`
 - `src/contracts/stakingPoolAbi.ts`
 - `src/contracts/erc20Abi.ts`
+
+## Faucet Behavior
+
+`Claim Faucet` calls `TokenFaucet.claim()` from the connected wallet.
+
+- Faucet contract holds staking token inventory and sends fixed drip amount per claim.
+- Users do not need deployer wallet for faucet claim.
 
 ## Notes
 

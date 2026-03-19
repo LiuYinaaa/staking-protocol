@@ -7,6 +7,7 @@ import { ProtocolStatsCard } from "./components/ProtocolStatsCard";
 import { StakeForm } from "./components/StakeForm";
 import { UnstakeClaimPanel } from "./components/UnstakeClaimPanel";
 import { EventHistory } from "./components/EventHistory";
+import { TokenPanel } from "./components/TokenPanel";
 
 export default function App() {
   const { address } = useAccount();
@@ -29,6 +30,7 @@ export default function App() {
       </div>
 
       <UserPositionCard address={address} refreshKey={refreshKey} />
+      <TokenPanel refreshKey={refreshKey} onActionSuccess={handleActionSuccess} />
 
       <div className="layout-2">
         <StakeForm onActionSuccess={handleActionSuccess} />
