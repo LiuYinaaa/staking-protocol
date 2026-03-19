@@ -15,10 +15,38 @@ export type InsertStakingEventInput = {
   timestamp: Date;
 };
 
+export type StakingEventRecord = {
+  eventType: string;
+  amount: Prisma.Decimal;
+  txHash: string;
+  blockNumber: bigint;
+  timestamp: Date;
+};
+
 export async function listLatestStakingEvents(limit = 50) {
   return prisma.stakingEvent.findMany({
     orderBy: [{ blockNumber: "desc" }, { logIndex: "desc" }],
     take: limit
+  });
+}
+
+export async function listUserStakingEvents(
+  userAddress: string,
+  limit: number,
+  offset: number
+): Promise<StakingEventRecord[]> {
+  return prisma.stakingEvent.findMany({
+    where: { userAddress: userAddress.toLowerCase() },
+    select: {
+      eventType: true,
+      amount: true,
+      txHash: true,
+      blockNumber: true,
+      timestamp: true
+    },
+    orderBy: [{ blockNumber: "desc" }, { logIndex: "desc" }],
+    take: limit,
+    skip: offset
   });
 }
 

@@ -1,10 +1,18 @@
 import { parseAbi, toEventSelector, type Address } from "viem";
 
+import { publicClient } from "./client.js";
 import { env } from "../config/env.js";
 
 export const STAKING_POOL_ADDRESS = env.STAKING_POOL_ADDRESS as Address;
 
 export const stakingPoolAbi = parseAbi([
+  "event Staked(address indexed user, uint256 amount)",
+  "event Unstaked(address indexed user, uint256 amount)",
+  "event RewardClaimed(address indexed user, uint256 amount)",
+  "function pendingReward(address user) view returns (uint256)"
+]);
+
+export const stakingPoolEventAbi = parseAbi([
   "event Staked(address indexed user, uint256 amount)",
   "event Unstaked(address indexed user, uint256 amount)",
   "event RewardClaimed(address indexed user, uint256 amount)"
@@ -38,3 +46,12 @@ export const PARSED_EVENT_TYPE_TO_ABI_EVENT_NAME: Record<
   unstake: "Unstaked",
   claim: "RewardClaimed"
 };
+
+export async function readPendingReward(userAddress: string): Promise<bigint> {
+  return publicClient.readContract({
+    address: STAKING_POOL_ADDRESS,
+    abi: stakingPoolAbi,
+    functionName: "pendingReward",
+    args: [userAddress as Address]
+  });
+}

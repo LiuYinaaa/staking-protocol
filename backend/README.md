@@ -1,8 +1,12 @@
 # staking-protocol backend
 
-Backend service for Project 2. It is responsible for indexing `StakingPool` events and exposing query APIs.
+Backend service for Project 2. It indexes `StakingPool` events and provides query APIs for dashboard use.
 
-Current stage focuses on project skeleton + database schema. Full indexing and business APIs are intentionally left as TODO.
+Current scope:
+
+- Event indexer for `Staked` / `Unstaked` / `RewardClaimed`
+- Postgres persistence via Prisma
+- Query APIs for user position, user events, and protocol stats
 
 ## Tech Stack
 
@@ -43,11 +47,14 @@ backend/
     api/
       server.ts
       routes/
-        index.ts
         health.ts
-        staking.ts
+        query.ts
+        index.ts
+        query.test.ts
     services/
-      stakingQueryService.ts
+      queryApiService.ts
+    scripts/
+      indexStakingEvents.ts
 ```
 
 ## Data Models
@@ -58,8 +65,6 @@ backend/
 - `StakingPosition`
 - `ProtocolStats`
 - `SyncState`
-
-These are enough to start event ingestion and API queries in the next stage.
 
 ## Quick Start
 
@@ -90,23 +95,61 @@ npm run prisma:migrate -- --name init
 npm run dev
 ```
 
-Server default:
+## API Endpoints (v1)
 
-- `http://0.0.0.0:3000`
-- Health check: `GET /health`
-- API base: `GET /api/v1/staking/overview`
+### `GET /health`
 
-## Current Status
+Basic service health check.
 
-Implemented:
+### `GET /users/:address/position`
 
-- Environment loading and validation
-- Fastify server bootstrap and basic routes
-- Prisma client wiring and initial repositories
-- Indexer module skeleton (sync/checkpoint/parser)
+Returns merged user position:
 
-Not implemented yet:
+- DB fields: `userAddress`, `stakedAmount`, `totalClaimedReward`, `lastUpdatedBlock`, `lastUpdatedAt`
+- Chain field: `pendingReward(address)` (real-time read)
 
-- Real on-chain event fetching and decoding
-- Stateful aggregation updates for positions/stats
-- Production-ready API validation/pagination/auth
+### `GET /users/:address/events?limit=20&offset=0`
+
+Returns paginated staking event history for a user:
+
+- `eventType`
+- `amount`
+- `txHash`
+- `blockNumber`
+- `timestamp`
+
+Validation:
+
+- invalid `address` -> `400`
+- invalid `limit`/`offset` -> `400`
+
+### `GET /protocol/stats`
+
+Returns protocol aggregate stats from DB:
+
+- `totalStaked`
+- `totalUsers`
+- `totalRewardsClaimed`
+- `lastUpdatedBlock`
+- `updatedAt`
+
+## Indexer Script
+
+Manual range scan:
+
+```bash
+npm run indexer:scan -- <fromBlock> <toBlock>
+```
+
+Incremental scan (if args are omitted):
+
+- `fromBlock = lastSyncedBlock + 1` (or `START_BLOCK` on first run)
+- `toBlock = latestBlock`
+
+## Tests
+
+Run API route tests:
+
+```bash
+npm test
+```

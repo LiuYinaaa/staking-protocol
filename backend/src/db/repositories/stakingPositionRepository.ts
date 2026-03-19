@@ -11,9 +11,26 @@ export type PositionUpdateResult = {
   newStakedAmount: bigint;
 };
 
-export async function getStakingPosition(userAddress: string) {
+export type StakingPositionRecord = {
+  userAddress: string;
+  stakedAmount: Prisma.Decimal;
+  totalClaimedReward: Prisma.Decimal;
+  lastUpdatedBlock: bigint;
+  lastUpdatedAt: Date;
+};
+
+export async function getStakingPosition(
+  userAddress: string
+): Promise<StakingPositionRecord | null> {
   return prisma.stakingPosition.findUnique({
-    where: { userAddress: userAddress.toLowerCase() }
+    where: { userAddress: userAddress.toLowerCase() },
+    select: {
+      userAddress: true,
+      stakedAmount: true,
+      totalClaimedReward: true,
+      lastUpdatedBlock: true,
+      lastUpdatedAt: true
+    }
   });
 }
 

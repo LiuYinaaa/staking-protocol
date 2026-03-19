@@ -1,12 +1,12 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { env } from "../config/env.js";
-import { registerRoutes } from "./routes/index.js";
+import { registerRoutes, type RouteDependencies } from "./routes/index.js";
 
-export function buildServer(): FastifyInstance {
+export function buildServer(deps: RouteDependencies = {}): FastifyInstance {
   const app = Fastify({ logger: true });
 
-  app.register(registerRoutes);
+  app.register(registerRoutes, deps);
 
   return app;
 }

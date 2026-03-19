@@ -3,7 +3,7 @@ import { decodeEventLog, type Log } from "viem";
 import {
   PARSED_EVENT_TYPE_TO_ABI_EVENT_NAME,
   TOPIC_TO_PARSED_EVENT_TYPE,
-  stakingPoolAbi,
+  stakingPoolEventAbi,
   type ParsedEventType
 } from "../blockchain/stakingPool.js";
 
@@ -29,7 +29,7 @@ export function parseStakingEvent(log: Log): ParsedStakingEvent {
 
   const eventName = PARSED_EVENT_TYPE_TO_ABI_EVENT_NAME[parsedType];
   const decoded = decodeEventLog({
-    abi: stakingPoolAbi,
+    abi: stakingPoolEventAbi,
     eventName,
     data: log.data,
     topics: log.topics

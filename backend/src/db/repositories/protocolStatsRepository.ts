@@ -11,8 +11,25 @@ export type ProtocolStatsDelta = {
   lastUpdatedBlock: bigint;
 };
 
-export async function getProtocolStats() {
-  return prisma.protocolStats.findUnique({ where: { id: 1 } });
+export type ProtocolStatsRecord = {
+  totalStaked: Prisma.Decimal;
+  totalUsers: number;
+  totalRewardsClaimed: Prisma.Decimal;
+  lastUpdatedBlock: bigint;
+  updatedAt: Date;
+};
+
+export async function getProtocolStats(): Promise<ProtocolStatsRecord | null> {
+  return prisma.protocolStats.findUnique({
+    where: { id: 1 },
+    select: {
+      totalStaked: true,
+      totalUsers: true,
+      totalRewardsClaimed: true,
+      lastUpdatedBlock: true,
+      updatedAt: true
+    }
+  });
 }
 
 export async function updateProtocolStats(
@@ -27,12 +44,8 @@ export async function updateProtocolStats(
     current?.totalRewardsClaimed.toString() ?? "0"
   );
 
-  const nextTotalStaked =
-    currentTotalStaked + (delta.totalStakedDelta ?? 0n);
-  const nextTotalUsers = Math.max(
-    0,
-    currentTotalUsers + (delta.totalUsersDelta ?? 0)
-  );
+  const nextTotalStaked = currentTotalStaked + (delta.totalStakedDelta ?? 0n);
+  const nextTotalUsers = Math.max(0, currentTotalUsers + (delta.totalUsersDelta ?? 0));
   const nextTotalRewardsClaimed =
     currentTotalRewardsClaimed + (delta.totalRewardsClaimedDelta ?? 0n);
 

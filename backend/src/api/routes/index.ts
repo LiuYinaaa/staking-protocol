@@ -1,9 +1,19 @@
 import type { FastifyInstance } from "fastify";
 
+import { createQueryApiService, type QueryApiService } from "../../services/queryApiService.js";
 import { healthRoutes } from "./health.js";
-import { stakingRoutes } from "./staking.js";
+import { queryRoutes } from "./query.js";
 
-export async function registerRoutes(app: FastifyInstance): Promise<void> {
+export type RouteDependencies = {
+  queryService?: QueryApiService;
+};
+
+export async function registerRoutes(
+  app: FastifyInstance,
+  deps: RouteDependencies = {}
+): Promise<void> {
+  const queryService = deps.queryService ?? createQueryApiService();
+
   await app.register(healthRoutes);
-  await app.register(stakingRoutes, { prefix: "/api/v1" });
+  await app.register(queryRoutes, { queryService });
 }
