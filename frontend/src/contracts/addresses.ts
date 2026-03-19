@@ -1,0 +1,11 @@
+import { getAddress } from "viem";
+
+export const STAKING_POOL_ADDRESS = getAddress(
+  import.meta.env.VITE_STAKING_POOL_ADDRESS ?? "0x0000000000000000000000000000000000000000"
+);
+
+export const STAKING_TOKEN_ADDRESS = getAddress(
+  import.meta.env.VITE_STAKING_TOKEN_ADDRESS ?? "0x0000000000000000000000000000000000000000"
+);
+
+export const TOKEN_DECIMALS = Number(import.meta.env.VITE_TOKEN_DECIMALS ?? "18");

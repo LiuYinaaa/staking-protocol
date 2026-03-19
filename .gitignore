@@ -34,3 +34,9 @@ backend/.env.development.local
 backend/.env.test.local
 backend/.env.production.local
 backend/.tsbuildinfo
+
+# Frontend (React/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
