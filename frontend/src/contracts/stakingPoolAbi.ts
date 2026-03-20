@@ -26,5 +26,16 @@ export const stakingPoolAbi = [
     stateMutability: "view",
     inputs: [{ name: "user", type: "address" }],
     outputs: [{ name: "", type: "uint256" }]
+  },
+  {
+    type: "function",
+    name: "getUserInfo",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [
+      { name: "amount", type: "uint256" },
+      { name: "rewardDebt", type: "uint256" },
+      { name: "pendingRewards", type: "uint256" }
+    ]
   }
 ] as const;

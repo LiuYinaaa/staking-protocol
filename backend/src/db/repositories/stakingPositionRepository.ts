@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../prisma.js";
 import type { ParsedEventType } from "../../blockchain/stakingPool.js";
+import { decimalToBigInt } from "./decimal.js";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -47,8 +48,8 @@ export async function upsertStakingPosition(
     where: { userAddress: normalized }
   });
 
-  const previousStaked = BigInt(current?.stakedAmount.toString() ?? "0");
-  const previousClaimed = BigInt(current?.totalClaimedReward.toString() ?? "0");
+  const previousStaked = decimalToBigInt(current?.stakedAmount);
+  const previousClaimed = decimalToBigInt(current?.totalClaimedReward);
 
   let newStaked = previousStaked;
   let newClaimed = previousClaimed;

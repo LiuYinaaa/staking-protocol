@@ -1,4 +1,5 @@
 import { getAddress, isAddress } from "viem";
+import { Prisma } from "@prisma/client";
 
 import {
   getProtocolStats,
@@ -52,6 +53,11 @@ function normalizeAddress(address: string): string {
   return getAddress(address).toLowerCase();
 }
 
+function decimalToIntegerString(value: Prisma.Decimal | null | undefined): string {
+  if (!value) return "0";
+  return value.toFixed(0);
+}
+
 function mapPosition(
   normalizedAddress: string,
   position: StakingPositionRecord | null,
@@ -59,8 +65,8 @@ function mapPosition(
 ): UserPositionView {
   return {
     userAddress: normalizedAddress,
-    stakedAmount: position?.stakedAmount.toString() ?? "0",
-    totalClaimedReward: position?.totalClaimedReward.toString() ?? "0",
+    stakedAmount: decimalToIntegerString(position?.stakedAmount),
+    totalClaimedReward: decimalToIntegerString(position?.totalClaimedReward),
     pendingReward: pendingReward.toString(),
     lastUpdatedBlock: position?.lastUpdatedBlock.toString() ?? "0",
     lastUpdatedAt: position?.lastUpdatedAt?.toISOString() ?? null
@@ -70,7 +76,7 @@ function mapPosition(
 function mapEvent(event: StakingEventRecord): UserEventView {
   return {
     eventType: event.eventType,
-    amount: event.amount.toString(),
+    amount: decimalToIntegerString(event.amount),
     txHash: event.txHash,
     blockNumber: event.blockNumber.toString(),
     timestamp: event.timestamp.toISOString()
@@ -79,9 +85,9 @@ function mapEvent(event: StakingEventRecord): UserEventView {
 
 function mapProtocolStats(stats: ProtocolStatsRecord | null): ProtocolStatsView {
   return {
-    totalStaked: stats?.totalStaked.toString() ?? "0",
+    totalStaked: decimalToIntegerString(stats?.totalStaked),
     totalUsers: stats?.totalUsers ?? 0,
-    totalRewardsClaimed: stats?.totalRewardsClaimed.toString() ?? "0",
+    totalRewardsClaimed: decimalToIntegerString(stats?.totalRewardsClaimed),
     lastUpdatedBlock: stats?.lastUpdatedBlock.toString() ?? "0",
     updatedAt: stats?.updatedAt?.toISOString() ?? null
   };

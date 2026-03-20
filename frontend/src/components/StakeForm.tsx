@@ -15,6 +15,7 @@ export function StakeForm({ onActionSuccess }: Props) {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<"approve" | "stake" | null>(null);
+  const [handledTxHash, setHandledTxHash] = useState<string | null>(null);
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: erc20Abi,
@@ -73,14 +74,18 @@ export function StakeForm({ onActionSuccess }: Props) {
   };
 
   useEffect(() => {
-    if (!isTxSuccess || !intent) return;
+    if (!isTxSuccess || !intent || !txHash) return;
+    if (handledTxHash === txHash) return;
+
+    setHandledTxHash(txHash);
 
     if (intent === "stake") {
       onActionSuccess();
+      setIntent(null);
     } else if (intent === "approve") {
       void refetchAllowance();
     }
-  }, [intent, isTxSuccess, onActionSuccess, refetchAllowance]);
+  }, [handledTxHash, intent, isTxSuccess, onActionSuccess, refetchAllowance, txHash]);
 
   return (
     <section className="card">

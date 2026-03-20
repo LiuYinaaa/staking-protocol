@@ -19,11 +19,25 @@ type Props = {
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (!error) return fallback;
+  const err = error as BaseError & { details?: string; cause?: unknown };
+  const cause = err.cause as { message?: string } | undefined;
+  return (
+    err.shortMessage ??
+    err.details ??
+    cause?.message ??
+    (error as Error).message ??
+    fallback
+  );
+}
+
 export function TokenPanel({ refreshKey, onActionSuccess }: Props) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const [error, setError] = useState<string | null>(null);
   const [claimTxHash, setClaimTxHash] = useState<Hash | undefined>();
+  const [handledTxHash, setHandledTxHash] = useState<Hash | undefined>();
 
   const faucetEnabled = FAUCET_ADDRESS.toLowerCase() !== ZERO_ADDRESS;
 
@@ -97,22 +111,22 @@ export function TokenPanel({ refreshKey, onActionSuccess }: Props) {
   ]);
 
   useEffect(() => {
-    if (!isTxSuccess) return;
+    if (!isTxSuccess || !claimTxHash) return;
+    if (handledTxHash === claimTxHash) return;
+
+    setHandledTxHash(claimTxHash);
     setClaimTxHash(undefined);
     onActionSuccess();
-  }, [isTxSuccess, onActionSuccess]);
+  }, [claimTxHash, handledTxHash, isTxSuccess, onActionSuccess]);
 
   useEffect(() => {
     if (!writeError) return;
-    setError((writeError as BaseError).shortMessage ?? "Failed to send claim transaction.");
+    setError(extractErrorMessage(writeError, "Failed to send claim transaction."));
   }, [writeError]);
 
   useEffect(() => {
     if (!receiptError) return;
-    setError(
-      (receiptError as BaseError).shortMessage ??
-        "Transaction receipt not found. Check wallet RPC and retry."
-    );
+    setError(extractErrorMessage(receiptError, "Transaction receipt not found."));
   }, [receiptError]);
 
   const claimBlocked = useMemo(() => {
@@ -162,12 +176,13 @@ export function TokenPanel({ refreshKey, onActionSuccess }: Props) {
       ]);
       setClaimTxHash(hash);
     } catch (txError) {
-      setError((txError as BaseError).shortMessage ?? "Claim transaction rejected.");
+      setError(extractErrorMessage(txError, "Claim transaction rejected."));
     }
   };
 
   const handleResetClaimState = () => {
     setClaimTxHash(undefined);
+    setHandledTxHash(undefined);
     setError(null);
   };
 

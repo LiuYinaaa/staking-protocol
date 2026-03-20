@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { WalletPanel } from "./components/WalletPanel";
@@ -13,9 +13,9 @@ export default function App() {
   const { address } = useAccount();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleActionSuccess = () => {
+  const handleActionSuccess = useCallback(() => {
     setRefreshKey((v) => v + 1);
-  };
+  }, []);
 
   return (
     <main className="container">

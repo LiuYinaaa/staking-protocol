@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "../prisma.js";
+import { decimalToBigInt } from "./decimal.js";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -38,11 +39,9 @@ export async function updateProtocolStats(
 ): Promise<void> {
   const current = await db.protocolStats.findUnique({ where: { id: 1 } });
 
-  const currentTotalStaked = BigInt(current?.totalStaked.toString() ?? "0");
+  const currentTotalStaked = decimalToBigInt(current?.totalStaked);
   const currentTotalUsers = current?.totalUsers ?? 0;
-  const currentTotalRewardsClaimed = BigInt(
-    current?.totalRewardsClaimed.toString() ?? "0"
-  );
+  const currentTotalRewardsClaimed = decimalToBigInt(current?.totalRewardsClaimed);
 
   const nextTotalStaked = currentTotalStaked + (delta.totalStakedDelta ?? 0n);
   const nextTotalUsers = Math.max(0, currentTotalUsers + (delta.totalUsersDelta ?? 0));

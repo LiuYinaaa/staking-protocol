@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { parseUnits } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 
 import { STAKING_POOL_ADDRESS, TOKEN_DECIMALS } from "../contracts/addresses";
 import { stakingPoolAbi } from "../contracts/stakingPoolAbi";
@@ -10,12 +10,23 @@ type Props = {
 };
 
 export function UnstakeClaimPanel({ onActionSuccess }: Props) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const [unstakeAmount, setUnstakeAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<"unstake" | "claim" | null>(null);
+  const [handledTxHash, setHandledTxHash] = useState<string | null>(null);
 
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { data: userInfo } = useReadContract({
+    abi: stakingPoolAbi,
+    address: STAKING_POOL_ADDRESS,
+    functionName: "getUserInfo",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(address) }
+  });
+
+  const userStakedAmount = userInfo?.[0] ?? 0n;
+
+  const { writeContractAsync, data: txHash, isPending } = useWriteContract();
   const { isLoading: isTxPending, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   const unstakeWei = useMemo(() => {
@@ -27,7 +38,7 @@ export function UnstakeClaimPanel({ onActionSuccess }: Props) {
     }
   }, [unstakeAmount]);
 
-  const handleUnstake = () => {
+  const handleUnstake = async () => {
     setError(null);
 
     if (!isConnected) {
@@ -38,17 +49,26 @@ export function UnstakeClaimPanel({ onActionSuccess }: Props) {
       setError("Enter a valid unstake amount.");
       return;
     }
+    if (unstakeWei > userStakedAmount) {
+      setError("Unstake amount exceeds your staked balance.");
+      return;
+    }
 
     setIntent("unstake");
-    writeContract({
-      abi: stakingPoolAbi,
-      address: STAKING_POOL_ADDRESS,
-      functionName: "unstake",
-      args: [unstakeWei]
-    });
+    try {
+      await writeContractAsync({
+        abi: stakingPoolAbi,
+        address: STAKING_POOL_ADDRESS,
+        functionName: "unstake",
+        args: [unstakeWei]
+      });
+    } catch (txError) {
+      setIntent(null);
+      setError((txError as Error).message || "Unstake failed.");
+    }
   };
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     setError(null);
     if (!isConnected) {
       setError("Connect wallet first.");
@@ -56,18 +76,27 @@ export function UnstakeClaimPanel({ onActionSuccess }: Props) {
     }
 
     setIntent("claim");
-    writeContract({
-      abi: stakingPoolAbi,
-      address: STAKING_POOL_ADDRESS,
-      functionName: "claimReward",
-      args: []
-    });
+    try {
+      await writeContractAsync({
+        abi: stakingPoolAbi,
+        address: STAKING_POOL_ADDRESS,
+        functionName: "claimReward",
+        args: []
+      });
+    } catch (txError) {
+      setIntent(null);
+      setError((txError as Error).message || "Claim failed.");
+    }
   };
 
   useEffect(() => {
-    if (!isTxSuccess || !intent) return;
+    if (!isTxSuccess || !intent || !txHash) return;
+    if (handledTxHash === txHash) return;
+
+    setHandledTxHash(txHash);
     onActionSuccess();
-  }, [intent, isTxSuccess, onActionSuccess]);
+    setIntent(null);
+  }, [handledTxHash, intent, isTxSuccess, onActionSuccess, txHash]);
 
   return (
     <section className="card">
